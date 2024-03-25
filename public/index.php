@@ -37,7 +37,7 @@ $container = $containerBuilder->build();
 // Instantiate the app
 AppFactory::setContainer($container);
 $app = AppFactory::create();
-$app->setBasePath("/slimsilk2024/public");
+$app->setBasePath("/silk2024-slim-main/public");
 $callableResolver = $app->getCallableResolver();
 
 // Register middleware
