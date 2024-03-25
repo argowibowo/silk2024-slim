@@ -299,5 +299,37 @@ return function (App $app) {
     });
         
     //  END Pasien
+    // Mulai Rekam Medis
+    $app->group('/rekam-medis', function (Group $group) use ($pdo) {
+
+        // Mendapatkan semua data rekam medis
+        $group->get('', function (Request $request, Response $response) use ($pdo) {
+            $stmt = $pdo->query('SELECT rekam_medis.no_rm AS no_rm,  pasien.nama AS nama_pasien, tindakan.deskripsi AS deskripsi_tindakan, farmasi.nama_obat AS nama_obat
+                                 FROM rekam_medis
+                                 INNER JOIN pasien ON rekam_medis.no_rm = pasien.no_rm
+                                 INNER JOIN tindakan ON rekam_medis.no_rm = tindakan.no_rm
+                                 INNER JOIN obat ON rekam_medis.sku = obat.sku
+                                 INNER JOIN farmasi ON obat.sku = farmasi.sku');
+            $rekam_medis = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $response->getBody()->write(json_encode($rekam_medis));
+            return $response->withHeader('Content-Type', 'application/json');
+        });
+        // Mendapatkan data lengkap pasien berdasarkan nomor rekam medis
+    });
+    $app->group('/detail-pasien', function (Group $group) use ($pdo) {
+        // Mendapatkan data lengkap pasien berdasarkan nomor rekam medis
+        $group->get('/{no_rm}', function (Request $request, Response $response, array $args) use ($pdo) {
+            $no_rm = $args['no_rm'];
+            $stmt = $pdo->prepare('SELECT * FROM pasien WHERE no_rm = :no_rm');
+            $stmt->execute([':no_rm' => $no_rm]);
+            $pasien = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$pasien) {
+                $response->getBody()->write(json_encode(['error' => 'Data pasien tidak ditemukan']));
+                return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            }
+            $response->getBody()->write(json_encode($pasien));
+            return $response->withHeader('Content-Type', 'application/json');
+        });
+    });
 
     };
