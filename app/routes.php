@@ -181,6 +181,123 @@ return function (App $app) {
     });
 
   //END rawat jalan
+
+    // Pasien
+
+    $app->get('/pasien', function (Request $request, Response $response) use ($pdo) {
+
+        $stmt = $pdo->query('SELECT * FROM pasien');
+        $pasien = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($pasien));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+    });
+
+    $app->post("/pasien", function (Request $request, Response $response) use ($pdo){
+
+        $data = $request->getParsedBody(); 
+
+        $stmt = $pdo->prepare('INSERT INTO pasien (alamat,berat,gol_darah,jk,kontak_keluarga,kontak_keluarga_alamat,
+                                kontak_keluarga_hp,nama,nik,no_hp, no_rm,tempat_lahir,tgl_lahir,tinggi) 
+                                VALUE (:alamat,:berat,:gol_darah,:jk,:kontak_keluarga,:kontak_keluarga_alamat,
+                                :kontak_keluarga_hp,:nama,:nik,:no_hp,: no_rm,:tempat_lahir,:tgl_lahir,:tinggi)');
+
+        $data = [
+            ":alamat"  => $data["alamat"],
+            ":berat"  => $data["berat"],
+            ":gol_darah"  => $data["gol_darah"],
+            ":jk"  => $data["jk"],
+            ":kontak_keluarga"  => $data["kontak_keluarga"],
+            ":kontak_keluarga_alamat"  => $data["kontak_keluarga_alamat"],
+            ":kontak_keluarga_hp"  => $data["kontak_keluarga_hp"],
+            ":nama"  => $data["nama"],
+            ":nik " => $data["nik"],
+            ":no_hp"  => $data["no_hp"],
+            ":no_rm"  => $data["no_rm "],
+            ":tempat_lahir"  => $data["tempat_lahir"],
+            ":tgl_lahir"  => $data["tgl_lahir "],
+            ":tinggi"  => $data["tinggi "]
+        ];
+    
+        if($stmt->execute($data))
+        {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
         
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+
+    // Get data by nama untuk menampilkan data 
+    $app->get("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+        $nama = $args['nama'];
+
+        $stmt = $pdo->prepare('SELECT * FROM pasien WHERE nama = :nama');
+        $stmt->execute([':nama' => $nama]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($data)
+        {
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        
+        $response->getBody()->write(json_encode(['status' => 'not_found']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    });
+
+
+    // Update data
+    $app->put("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+        $sku = $args['nama'];
+        $requestData = $request->getParsedBody();
+
+        $stmt = $pdo->prepare('UPDATE pasien SET nik = :nik, berat = :berat WHERE nama = :nama');
+
+        $data = [
+            ":alamat"  => $requestData["alamat"],
+            ":berat"  => $requestData["berat"],
+            ":gol_darah"  => $requestData["gol_darah"],
+            ":jk"  => $requestData["jk"],
+            ":kontak_keluarga"  => $requestData["kontak_keluarga"],
+            ":kontak_keluarga_alamat"  => $requestData["kontak_keluarga_alamat"],
+            ":kontak_keluarga_hp"  => $requestData["kontak_keluarga_hp"],
+            ":nama"  => $requestData["nama"],
+            ":nik " => $requestData["nik"],
+            ":no_hp"  => $requestData["no_hp"],
+            ":no_rm"  => $requestData["no_rm "],
+            ":tempat_lahir"  => $requestData["tempat_lahir"],
+            ":tgl_lahir"  => $requestData["tgl_lahir "],
+            ":tinggi"  => $requestData["tinggi "]
+        ];
+
+        if($stmt->execute($data))
+        {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+
+
+    // Delete data
+    $app->delete("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+        $nama = $args['nama'];
+
+        $stmt = $pdo->prepare('DELETE FROM pasien WHERE nama = :nama');
+
+        if($stmt->execute([':nama' => $nama]))
+        {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+        
+    //  END Pasien
 
     };
