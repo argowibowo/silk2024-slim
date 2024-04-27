@@ -324,4 +324,44 @@ return function (App $app) {
             return $response->withHeader('Content-Type', 'application/json');
         });
     });
+
+    $app->group('/riwayat', function (Group $group) use ($pdo) {
+    // Mendapatkan riwayat pasien berdasarkan nomor rekam medis
+    $group->get('/{no_rm}', function (Request $request, Response $response, array $args) use ($pdo) {
+        $no_rm = $args['no_rm'];
+        // Mendapatkan riwayat pasien berdasarkan nomor rekam medis dari tabel rekam_medis
+        $stmt_riwayat = $pdo->prepare('SELECT id_rm, tanggal, keluhan, tinggi, berat, tensi, dokter FROM rekam_medis WHERE no_rm = :no_rm');
+        $stmt_riwayat->execute([':no_rm' => $no_rm]);
+        $riwayat_pasien = $stmt_riwayat->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($riwayat_pasien)) {
+            $response->getBody()->write(json_encode(['error' => 'Riwayat pasien tidak ditemukan']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        // Ambil data obat berdasarkan id_rm
+        foreach ($riwayat_pasien as &$riwayat) {
+            $id_rm = $riwayat['id_rm'];
+            $stmt_obat = $pdo->prepare('SELECT sku FROM obat WHERE id_rm = :id_rm');
+            $stmt_obat->execute([':id_rm' => $id_rm]);
+            $sku_results = $stmt_obat->fetchAll(PDO::FETCH_ASSOC);
+
+            $nama_obat = [];
+            foreach ($sku_results as $sku_row) {
+                $sku = $sku_row['sku'];
+                // Ambil nama obat dari tabel farmasi berdasarkan sku
+                $stmt_nama_obat = $pdo->prepare('SELECT nama_obat FROM farmasi WHERE sku = :sku');
+                $stmt_nama_obat->execute([':sku' => $sku]);
+                $nama_obat_result = $stmt_nama_obat->fetch(PDO::FETCH_ASSOC);
+                if ($nama_obat_result) {
+                    $nama_obat[] = $nama_obat_result['nama_obat'];
+                }
+            }
+            $riwayat['obat'] = $nama_obat;
+        }
+
+        $response->getBody()->write(json_encode($riwayat_pasien));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+});
 };
