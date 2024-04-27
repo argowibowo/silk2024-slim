@@ -364,4 +364,28 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 });
+
+$app->group('/cari_pasien', function (Group $group) use ($pdo) {
+    // Mendapatkan data lengkap pasien berdasarkan nomor rekam medis
+    $group->get('/{no_rm}', function (Request $request, Response $response, array $args) use ($pdo) {
+        $no_rm = $args['no_rm'];
+
+        // Prepare statement
+        $stmt = $pdo->prepare('SELECT no_rm, nama, jk, gol_darah, tinggi, berat FROM pasien WHERE no_rm = :no_rm');
+        $stmt->execute([':no_rm' => $no_rm]);
+
+        // Fetch data
+        $pasien = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Jika data tidak ditemukan, kirim response error
+        if (!$pasien) {
+            $response->getBody()->write(json_encode(['error' => 'Data pasien tidak ditemukan']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        // Kirim data pasien dalam format JSON
+        $response->getBody()->write(json_encode($pasien));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+});
 };
