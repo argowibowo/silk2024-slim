@@ -388,4 +388,71 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 });
+
+//Rawat Jalan
+    // API membuat tampilan untuk memanggil api setelah dientri ke rawat jalan
+    // misale ndak muncul bnyk baris 146 di hapus 
+    $app->get('/rawatjalan', function(Request $request, Response $response) use ($pdo) {
+        // $response-> getBody()->write(json_encode(['foo'=>'bar']));
+        $stmt = $pdo->query('
+        SELECT
+            *
+        FROM tindakan 
+        INNER JOIN pasien ON tindakan.no_rm = pasien.no_rm 
+        INNER JOIN obat ON tindakan.no_rm = obat.id_rm 
+        ;      
+            ');
+        $obats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($obats));
+
+        return $response->withHeader('Content-Type','application/json')->withStatus(201);
+    });
+
+    $app->get('/daftarpasien', function (Request $request, Response $response) use($pdo){
+        // $response->getBody()->write(json_encode(['foo'=> 'bar']));
+        $stmt = $pdo->query('SELECT * FROM pasien');
+        $pasien = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($pasien));
+        return $response->withHeader('Content-Type','application/json')->withStatus(201);
+        //return $response->withJson(["status"=>"success"],200);
+    });
+
+    // insert pada table OBAT & TINDAKAN 
+    $app->post("/tindakanObat", function (Request $request, Response $response) use ($pdo){
+
+        $data = $request->getParsedBody();
+        // QUERY 1 INSERT OBAT
+        $stmt1 = $pdo->prepare('INSERT INTO obat (id_rm, sku, label_catatan, jumlah) VALUE (:id_rm,:sku, :label_catatan, :jumlah)');
+        $data1 = [
+            ":id_rm" => $data["id_rm"],
+            ":sku" => $data["sku"],
+            ":label_catatan" => $data["label_catatan"],
+            ":jumlah" => $data["jumlah"]
+        ];
+    
+        if($stmt1->execute($data1))
+        {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
+
+        // QUERY 2 INSERT TINDAKAN --> BISA NDAA? APAKAH PERINTAH QUERY 2 HARUS DI DALAM IF QUERY 1 (?)
+        $stmt2 = $pdo->prepare('INSERT INTO tindakan (no_rm, deskripsi) VALUE (:no_rm,:deskripsi)');
+
+        $data2 = [
+            ":no_rm" => $data["no_rm"],
+            ":deskripsi" => $data["deskripsi"] // Assuming "deskripsi" is present in the request body
+        ];
+
+        if (!$stmt2->execute($data2)) {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
+        
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+
+    // Get data by nama untuk menampilkan data sesuai nama pasien ---> PINJAM DR FUNCTION TIM PASIEN --> /pasien/{nama}
+  //END rawat jalan
 };
