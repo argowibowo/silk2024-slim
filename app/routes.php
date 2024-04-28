@@ -159,6 +159,7 @@ return function (App $app) {
         //return $response->withJson(["status"=>"success"],200);
     });
 
+
     $app->post("/formedit", function (Request $request, Response $response) use ($pdo){
 
         $data = $request->getParsedBody();
@@ -184,14 +185,7 @@ return function (App $app) {
 
     // Pasien
 
-    $app->get('/pasien', function (Request $request, Response $response) use ($pdo) {
-
-        $stmt = $pdo->query('SELECT * FROM pasien');
-        $pasien = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $response->getBody()->write(json_encode($pasien));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
-    });
-
+  
     $app->post("/pasien", function (Request $request, Response $response) use ($pdo){
 
         $data = $request->getParsedBody(); 
@@ -329,7 +323,7 @@ return function (App $app) {
             }
             $response->getBody()->write(json_encode($pasien));
             return $response->withHeader('Content-Type', 'application/json');
-        });
-    });
+        });
+    });
 
     };
