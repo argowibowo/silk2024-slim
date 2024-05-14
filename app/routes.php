@@ -336,7 +336,7 @@ return function (App $app) {
 
 
     // Update data
-    $app->put("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+    $app->put("/update_pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
         $sku = $args['nama'];
         $requestData = $request->getParsedBody();
 
@@ -371,7 +371,7 @@ return function (App $app) {
 
 
     // Delete data
-    $app->delete("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+    $app->delete("/delete_pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
         $nama = $args['nama'];
 
         $stmt = $pdo->prepare('DELETE FROM pasien WHERE nama = :nama');
