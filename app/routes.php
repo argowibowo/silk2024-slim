@@ -55,14 +55,15 @@ return function (App $app) {
 
         $data = $request->getParsedBody();
 
-        $stmt = $pdo->prepare('INSERT INTO obat (sku, label_catatan, jumlah) VALUE (:sku, :label_catatan, :jumlah)');
+        $stmt = $pdo->prepare('INSERT INTO obat (id_rm,sku, label_catatan, jumlah) VALUE (:id_rm,:sku, :label_catatan, :jumlah)');
 
         $data = [
+            ":id_rm" => $data["id_rm"],
             ":sku" => $data["sku"],
             ":label_catatan" => $data["label_catatan"],
             ":jumlah" => $data["jumlah"]
         ];
-    
+
         if($stmt->execute($data))
         {
             $response->getBody()->write(json_encode(['status' => 'berhasil']));
@@ -97,13 +98,15 @@ return function (App $app) {
         $sku = $args['sku'];
         $requestData = $request->getParsedBody();
 
-        $stmt = $pdo->prepare('UPDATE obat SET label_catatan = :label_catatan, jumlah = :jumlah WHERE sku = :sku');
+        $stmt = $pdo->prepare('UPDATE obat SET id_rm = :id_rm, label_catatan = :label_catatan, jumlah = :jumlah WHERE sku = :sku');
 
         $data = [
             ":sku" => $sku,
+            ":id_rm" => $requestData["id_rm"],
             ":label_catatan" => $requestData["label_catatan"],
             ":jumlah" => $requestData["jumlah"]
         ];
+
 
         if($stmt->execute($data))
         {
@@ -574,5 +577,79 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 });
+
+    //TAMPIL STATUS OBAT
+            $app->get('/tampil_all', function (Request $request, Response $response) use ($pdo) {
+
+                $stmt = $pdo->query('SELECT id_rm, no_rm, keluhan, tinggi, berat, tensi, dokter, status_obat, sku, tanggal
+                FROM rekam_medis
+                WHERE status_obat IN ("menunggu", "diproses")
+                AND tanggal = CURDATE();
+                ');
+                $status = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $response->getBody()->write(json_encode($status));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            });
+            
+            $app->get('/tampil_tunggu', function (Request $request, Response $response) use ($pdo) {
+
+                $stmt = $pdo->query('SELECT id_rm, no_rm, keluhan, tinggi, berat, tensi, dokter, status_obat, sku, tanggal
+                FROM rekam_medis
+                WHERE status_obat = "menunggu"
+                AND tanggal = CURDATE();
+                ');
+                $status = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $response->getBody()->write(json_encode($status));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            });
+
+            $app->get('/tampil_proses', function (Request $request, Response $response) use ($pdo) {
+
+                $stmt = $pdo->query('SELECT id_rm, no_rm, keluhan, tinggi, berat, tensi, dokter, status_obat, sku, tanggal
+                FROM rekam_medis
+                WHERE status_obat = "diproses"
+                AND tanggal = CURDATE();
+                ');
+                $status = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $response->getBody()->write(json_encode($status));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            });
+
+            $app->put('/proses_rm/{id}', function (Request $request, Response $response, array $args) use ($pdo) {
+                $id = $args['id'];
+            
+                $stmt = $pdo->prepare('UPDATE rekam_medis SET status_obat = "diproses" WHERE id_rm = :id');
+                $result = $stmt->execute([':id' => $id]);
+            
+                if ($result) {
+                    $response->getBody()->write(json_encode(['status' => 'berhasil']));
+                    return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+                } else {
+                    $response->getBody()->write(json_encode(['status' => 'failed']));
+                    return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+                }
+            });
+
+            $app->put('/selesai_rm/{id}', function (Request $request, Response $response, array $args) use ($pdo) {
+                $id = $args['id'];
+            
+                $stmt = $pdo->prepare('UPDATE rekam_medis SET status_obat = "selesai" WHERE id_rm = :id');
+                $result = $stmt->execute([':id' => $id]);
+            
+                if ($result) {
+                    $response->getBody()->write(json_encode(['status' => 'berhasil']));
+                    return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+                } else {
+                    $response->getBody()->write(json_encode(['status' => 'failed']));
+                    return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+                }
+            });
+            
+            
+            
+            
+
+
+
 
 };
