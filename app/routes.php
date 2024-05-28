@@ -644,12 +644,291 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
                     return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
                 }
             });
-            
-            
-            
-            
+            //RAWAT JALAN
+    // Menampilkan Seluruh data setelah dientri ke rekam medis Sort By TODAY
+    $app->get('/rawatjalan', function(Request $request, Response $response) use ($pdo) {
+        // $response-> getBody()->write(json_encode(['foo'=>'bar']));
+        $stmt = $pdo->query('SELECT 
+            tindakan.id AS id,
+            rekam_medis.id_rm AS id_rm,  
+            rekam_medis.no_rm AS no_rm,
+            pasien.nama AS nama, 
+            tindakan.deskripsi AS deskripsi, 
+            farmasi.sku AS sku,
+            farmasi.nama_obat AS nama_obat,
+            obat.label_catatan AS label_catatan,
+            obat.jumlah AS jumlah
+        FROM rekam_medis
+        LEFT JOIN pasien ON rekam_medis.no_rm = pasien.no_rm
+        LEFT JOIN tindakan ON rekam_medis.no_rm = tindakan.no_rm
+        LEFT JOIN obat ON rekam_medis.id_rm = obat.id_rm
+        LEFT JOIN farmasi ON obat.sku = farmasi.sku
+        
+        ');
+    // WHERE DATE(rekam_medis.tanggal) = CURDATE()
+        $obats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($obats));
 
+        return $response->withHeader('Content-Type','application/json')->withStatus(201);
+    });
 
+    // ------------- GET data REKAM MEDIS by:id_rm----------------
+    $app->get("/rawatjalan/rekammedis/{id_rm}", function (Request $request, Response $response, $args) use ($pdo){
+        $id_rm = $args['id_rm'];
+        $stmt = $pdo->prepare('SELECT 
+            *
+        FROM rekam_medis  
+        WHERE id_rm = :id_rm');
+        $stmt->execute([':id_rm' => $id_rm]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        if($data)
+        {
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
 
+    // ------------- GET data OBAT by:id,id_rm,sku----------------
+    $app->get("/rawatjalan/obat/{id}/{id_rm}/{sku}", function (Request $request, Response $response, $args) use ($pdo){
+        $id_rm = $args['id_rm'];
+        $id = $args['id'];
+        $sku = $args['sku'];
+        $stmt = $pdo->prepare('SELECT 
+            obat.id AS id, 
+            obat.id_rm AS id_rm,  
+            obat.sku AS sku,
+            farmasi.nama_obat AS nama_obat,
+            obat.label_catatan AS label_catatan,
+            obat.jumlah AS jumlah
+        FROM obat JOIN farmasi ON obat.sku = farmasi.sku 
+        WHERE obat.id_rm = :id_rm AND obat.sku = :sku');
+        $stmt->execute([':id_rm' => $id_rm, ':sku' => $sku]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($data)
+        {
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        // TAMBAH DATA SECARA OTOMATIS DAN DI SET NULL
+        // Menyiapkan dan menjalankan query untuk mendapatkan no_rm dari tabel rekam_medis
+        $id_rm = $args['id_rm'];
+        $stmt = $pdo->prepare('SELECT id_rm FROM rekam_medis WHERE id_rm = :id_rm');
+        $stmt->execute([':id_rm' => $id_rm]);
+        $rekamMedis = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($rekamMedis) {
+            $id_rm = $rekamMedis['id_rm'];
+        } else {
+            $id_rm = "0"; // Default value jika tidak ditemukan
+        }
+
+        // Data yang akan diinsert ke dalam tabel obat
+        $postData = [
+            "id_rm" => $id_rm,
+            "sku" => "NULL", // Atau nilai lainnya yang relevan
+            "label_catatan" => "NULL",
+            "jumlah" => "NULL"
+        ];
+
+        // Menyiapkan dan menjalankan query untuk menyimpan data baru ke dalam tabel obat
+        $stmt = $pdo->prepare('INSERT INTO obat (id_rm, sku, label_catatan, jumlah) VALUES ( :id_rm, :sku, :label_catatan, :jumlah)');
+        $postResult = $stmt->execute([
+            ':id_rm' => $postData['id_rm'],
+            ':sku' => $postData['sku'],
+            ':label_catatan' => $postData['label_catatan'],
+            ':jumlah' => $postData['jumlah']
+        ]);
+
+        // Jika operasi POST berhasil, kirimkan respons sukses
+        if ($postResult) {
+            $response->getBody()->write(json_encode(['status' => 'post_success']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
+
+        // Jika operasi POST gagal, kirimkan respons gagal
+        $response->getBody()->write(json_encode(['status' => 'post_failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+    // ------------- UPDATE data OBAT by:id,id_rm----------------
+    $app->put("/rawatjalan/obat/{id}/{id_rm}", function (Request $request, Response $response, $args) use ($pdo) {
+        $id = $args['id'];
+        $id_rm = $args['id_rm'];
+        $requestData = $request->getParsedBody();
+    
+        // Menyiapkan query update
+        $stmt = $pdo->prepare(
+            'UPDATE obat 
+            SET sku = :sku, label_catatan = :label_catatan, jumlah = :jumlah 
+            WHERE id = :id AND id_rm = :id_rm');
+    
+        // Data untuk query
+        $data = [
+            ":id" => $id,
+            ":id_rm" => $id_rm,
+            ":sku" => $requestData["sku"],
+            ":label_catatan" => $requestData["label_catatan"],
+            ":jumlah" => $requestData["jumlah"]
+        ];
+    
+        try {
+            // Eksekusi query
+            if ($stmt->execute($data)) {
+                $response->getBody()->write(json_encode(['status' => 'berhasil']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            } else {
+                $response->getBody()->write(json_encode(['status' => 'update_failed']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            }
+        } catch (PDOException $e) {
+            // Menangani kesalahan eksekusi query
+            $response->getBody()->write(json_encode(['status' => 'error', 'message' => $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    });
+        
+    // ------------- GET data TINDAKAN by:id,id_rm----------------
+    $app->get("/rawatjalan/Tindakan/{id}/{id_rm}", function (Request $request, Response $response, $args) use ($pdo){
+        $id = $args['id'];
+
+        $stmt = $pdo->prepare('SELECT * FROM tindakan WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($data)
+        {
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        // Menyiapkan dan menjalankan query untuk mendapatkan no_rm dari tabel rekam_medis
+        $id_rm = $args['id_rm'];
+        $stmt = $pdo->prepare('SELECT no_rm FROM rekam_medis WHERE id_rm = :id_rm');
+        $stmt->execute([':id_rm' => $id_rm]);
+        $rekamMedis = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($rekamMedis) {
+            $no_rm = $rekamMedis['no_rm'];
+        } else {
+            $no_rm = "0"; // Default value jika tidak ditemukan
+        }
+
+        // Data yang akan diinsert ke dalam tabel tindakan
+        $postData = [
+            "id_rm" => $id_rm,
+            "no_rm" => $no_rm,
+            "deskripsi" => "NULL" // Atau nilai lainnya yang relevan
+        ];
+
+        // Menyiapkan dan menjalankan query untuk menyimpan data baru ke dalam tabel tindakan
+        $stmt = $pdo->prepare('INSERT INTO tindakan (id_rm, no_rm, deskripsi) VALUES (:id_rm, :no_rm, :deskripsi)');
+        $postResult = $stmt->execute([
+            ':id_rm' => $postData['id_rm'],
+            ':no_rm' => $postData['no_rm'],
+            ':deskripsi' => $postData['deskripsi']
+        ]);
+
+        // Jika operasi POST berhasil, kirimkan respons sukses
+        if ($postResult) {
+            $response->getBody()->write(json_encode(['status' => 'post_success']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
+
+        // Jika operasi POST gagal, kirimkan respons gagal
+        $response->getBody()->write(json_encode(['status' => 'post_failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+
+    // ------------- UPDATE data TINDAKAN by:id,id_rm----------------
+    $app->put("/rawatjalan/Tindakan/{id}/{id_rm}", function (Request $request, Response $response, $args) use ($pdo) {
+        $id_rm = $args['id_rm'];
+        $id = $args['id'];
+        $requestData = $request->getParsedBody();
+      
+        // Ensure "deskripsi" is present in request data
+        if (!isset($requestData["deskripsi"])) {
+          $response->getBody()->write(json_encode(['status' => 'error: missing_deskripsi']));
+          return $response->withHeader('Content-Type', 'application/json')->withStatus(400); // Bad request
+        }
+      
+        $stmt = $pdo->prepare('UPDATE tindakan 
+                                SET deskripsi = :deskripsi 
+                                WHERE id = :id AND id_rm = :id_rm');
+      
+        $data = [
+          ":id" => $id,  // Assuming 'id' is available through another mechanism
+          ":id_rm" => $id_rm,
+          ":deskripsi" => $requestData["deskripsi"]
+        ];
+      
+        if ($stmt->execute($data)) {
+          $response->getBody()->write(json_encode(['status' => 'berhasil']));
+          return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+          
+        }
+      
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+      });
+
+    // ------------- DELETE data OBAT by:id,sku----------------
+    $app->delete("/rawatjalan/delete/{id}/{sku}", function (Request $request, Response $response, $args) use ($pdo){
+            $sku = $args['sku'];
+            $id = $args['id'];
+
+            $stmt = $pdo->prepare('DELETE FROM obat  WHERE id = :id AND sku = :sku');
+    
+            if($stmt->execute([':id' => $id, ':sku' => $sku]))
+            {
+                $response->getBody()->write(json_encode(['status' => 'berhasil']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            }
+            
+            $response->getBody()->write(json_encode(['status' => 'failed']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+    // ------------- POST data OBAT by:id,id_rm,sku----------------
+
+    $app->post("/rawatjalan/tambah/obat/{id}/{id_rm}", function (Request $request, Response $response, $args) use ($pdo){
+        $id_rm = $args['id_rm'];
+        $stmt = $pdo->prepare('SELECT id_rm FROM rekam_medis WHERE id_rm = :id_rm');
+        $stmt->execute([':id_rm' => $id_rm]);
+        $rekamMedis = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($rekamMedis) {
+            $id_rm = $rekamMedis['id_rm'];
+        } else {
+            $id_rm = "0"; // Default value jika tidak ditemukan
+        }
+
+        // Data yang akan diinsert ke dalam tabel obat
+        $postData = [
+            "id_rm" => $id_rm,
+            "sku" => "NULL", // Atau nilai lainnya yang relevan
+            "label_catatan" => "NULL",
+            "jumlah" => "NULL"
+        ];
+
+        // Menyiapkan dan menjalankan query untuk menyimpan data baru ke dalam tabel obat
+        $stmt = $pdo->prepare('INSERT INTO obat (id_rm, sku, label_catatan, jumlah) VALUES ( :id_rm, :sku, :label_catatan, :jumlah)');
+        $postResult = $stmt->execute([
+            ':id_rm' => $postData['id_rm'],
+            ':sku' => $postData['sku'],
+            ':label_catatan' => $postData['label_catatan'],
+            ':jumlah' => $postData['jumlah']
+        ]);
+
+        // Jika operasi POST berhasil, kirimkan respons sukses
+        if ($postResult) {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }
+
+        // Jika operasi POST gagal, kirimkan respons gagal
+        $response->getBody()->write(json_encode(['status' => 'gagal']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });  
+// END RAWAT JALAN
 };
