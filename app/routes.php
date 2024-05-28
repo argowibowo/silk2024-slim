@@ -230,55 +230,7 @@ return function (App $app) {
 //END DATA FARMASI
 //END FARMASIGROUP
 
-//Rawat Jalan
-        
-    $app->get('/rawatjalan1', function(Request $request, Response $response) use ($pdo) {
-        // $response-> getBody()->write(json_encode(['foo'=>'bar']));
-        $stmt = $pdo->query('
-        SELECT
-            *
-        FROM tindakan 
-        INNER JOIN pasien ON tindakan.no_rm = pasien.no_rm 
-        ;      
-            ');
-        $obats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $response->getBody()->write(json_encode($obats));
 
-        return $response->withHeader('Content-Type','application/json')->withStatus(201);
-    });
-
-    $app->get('/pasien', function (Request $request, Response $response) use($pdo){
-        // $response->getBody()->write(json_encode(['foo'=> 'bar']));
-        $stmt = $pdo->query('SELECT * FROM pasien');
-        $pasien = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $response->getBody()->write(json_encode($pasien));
-        return $response->withHeader('Content-Type','application/json')->withStatus(201);
-        //return $response->withJson(["status"=>"success"],200);
-    });
-
-
-    $app->post("/formedit", function (Request $request, Response $response) use ($pdo){
-
-        $data = $request->getParsedBody();
-
-        $stmt = $pdo->prepare('INSERT INTO tindakan ( no_rm, deskripsi) VALUE (:deskripsi)');
-
-        $data = [
-            ":no_rm" => $data["no_rm"],
-            ":deskripsi" => $data["deskripsi"]
-        ];
-
-        if($stmt->execute($data))
-        {
-            $response->getBody()->write(json_encode(['status' => 'berhasil']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
-        }
-        
-        $response->getBody()->write(json_encode(['status' => 'failed']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-    });
-
-  //END rawat jalan
 
     $app->post("/pasien", function (Request $request, Response $response) use ($pdo){
 
@@ -663,7 +615,7 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
         LEFT JOIN tindakan ON rekam_medis.no_rm = tindakan.no_rm
         LEFT JOIN obat ON rekam_medis.id_rm = obat.id_rm
         LEFT JOIN farmasi ON obat.sku = farmasi.sku
-        
+        WHERE DATE(rekam_medis.tanggal) = CURDATE()
         ');
     // WHERE DATE(rekam_medis.tanggal) = CURDATE()
         $obats = $stmt->fetchAll(PDO::FETCH_ASSOC);
