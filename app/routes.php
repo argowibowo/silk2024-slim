@@ -815,4 +815,179 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
         return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
     });  
 // END RAWAT JALAN
+
+//PASIEN
+$app->POST("/list_pasien", function (Request $request, Response $response) use ($pdo){
+
+    $data = $request->getParsedBody(); 
+
+    $stmt = $pdo->prepare('INSERT INTO pasien (alamat, berat, gol_darah, jk, kontak_keluarga, kontak_keluarga_alamat,
+                            kontak_keluarga_hp, nama, nik, no_hp, no_rm, tempat_lahir, tgl_lahir, tinggi) 
+                            VALUES (:alamat, :berat, :gol_darah, :jk, :kontak_keluarga, :kontak_keluarga_alamat,
+                            :kontak_keluarga_hp, :nama, :nik, :no_hp, :no_rm, :tempat_lahir, :tgl_lahir, :tinggi)');
+
+    $data = [
+        ":alamat"  => $data["alamat"],
+        ":berat"  => $data["berat"],
+        ":gol_darah"  => $data["gol_darah"],
+        ":jk"  => $data["jk"],
+        ":kontak_keluarga"  => $data["kontak_keluarga"],
+        ":kontak_keluarga_alamat"  => $data["kontak_keluarga_alamat"],
+        ":kontak_keluarga_hp"  => $data["kontak_keluarga_hp"],
+        ":nama"  => $data["nama"],
+        ":nik" => $data["nik"],
+        ":no_hp"  => $data["no_hp"],
+        ":no_rm"  => $data["no_rm"],
+        ":tempat_lahir"  => $data["tempat_lahir"],
+        ":tgl_lahir"  => $data["tgl_lahir"],
+        ":tinggi"  => $data["tinggi"]
+    ];
+
+    if($stmt->execute($data))
+    {
+        $response->getBody()->write(json_encode(['status' => 'berhasil']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+    }
+    
+    $response->getBody()->write(json_encode(['status' => 'failed']));
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+});
+
+
+    // Get data by nama untuk menampilkan data 
+    $app->get("/pasien/{no_rm}", function (Request $request, Response $response, $args) use ($pdo) {
+        $no_rm = $args['no_rm'];
+    
+        $stmt = $pdo->prepare('SELECT * FROM pasien WHERE no_rm = :no_rm');
+        $stmt->execute([':no_rm' => $no_rm]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if ($data) {
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+    
+        $response->getBody()->write(json_encode(['status' => 'not_found']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    });
+    
+
+
+    // Update data
+$app->put("/update_pasien/{no_rm}", function (Request $request, Response $response, $args) use ($pdo){
+    $no_rm = $args['no_rm'];
+    $requestData = $request->getParsedBody();
+
+    $stmt = $pdo->prepare('UPDATE pasien SET 
+        nama = :nama, 
+        alamat = :alamat, 
+        no_hp = :no_hp, 
+        jk = :jk, 
+        nik = :nik, 
+        tgl_lahir = :tgl_lahir, 
+        tempat_lahir = :tempat_lahir, 
+        gol_darah = :gol_darah, 
+        tinggi = :tinggi, 
+        berat = :berat, 
+        kontak_keluarga = :kontak_keluarga, 
+        kontak_keluarga_hp = :kontak_keluarga_hp, 
+        kontak_keluarga_alamat = :kontak_keluarga_alamat 
+        WHERE no_rm = :no_rm');
+
+    $data = [
+        ":nama" => $requestData["nama"],
+        ":alamat" => $requestData["alamat"],
+        ":no_hp" => $requestData["no_hp"],
+        ":jk" => $requestData["jk"],
+        ":nik" => $requestData["nik"],
+        ":tgl_lahir" => $requestData["tgl_lahir"],
+        ":tempat_lahir" => $requestData["tempat_lahir"],
+        ":gol_darah" => $requestData["gol_darah"],
+        ":tinggi" => $requestData["tinggi"],
+        ":berat" => $requestData["berat"],
+        ":kontak_keluarga" => $requestData["kontak_keluarga"],
+        ":kontak_keluarga_hp" => $requestData["kontak_keluarga_hp"],
+        ":kontak_keluarga_alamat" => $requestData["kontak_keluarga_alamat"],
+        ":no_rm" => $no_rm
+    ];
+
+    if ($stmt->execute($data)) {
+        $response->getBody()->write(json_encode(['status' => 'berhasil']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    }
+
+    $response->getBody()->write(json_encode(['status' => 'failed']));
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+});
+
+    
+    // Delete data
+    $app->delete("/delete_pasien/{id}", function (Request $request, Response $response, $args) use ($pdo) {
+        $id = $args['id'];
+    
+        $stmt = $pdo->prepare('DELETE FROM pasien WHERE id = :id');
+    
+        if ($stmt->execute([':id' => $id])) {
+            $response->getBody()->write(json_encode(['status' => 'berhasil']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+    
+        $response->getBody()->write(json_encode(['status' => 'failed']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+    
+
+    // Antrian Pasien
+    $app->post("/antri", function (Request $request, Response $response) use ($pdo) {
+        $data = $request->getParsedBody();
+        
+        $no_rm = $data["no_rm"];
+        $tensi = $data["tensi"];
+    
+        // Query untuk mendapatkan data tinggi dan berat dari tabel pasien
+        $stmt_pasien = $pdo->prepare('SELECT tinggi, berat FROM pasien WHERE no_rm = :no_rm');
+        $stmt_pasien->execute([':no_rm' => $no_rm]);
+        $pasien = $stmt_pasien->fetch(PDO::FETCH_ASSOC);
+    
+        if ($pasien) {
+            $tinggi = $pasien["tinggi"];
+            $berat = $pasien["berat"];
+    
+            // Query untuk memasukkan data ke dalam tabel rekam_medis
+            $stmt_rekam_medis = $pdo->prepare('INSERT INTO rekam_medis (no_rm, tensi, tinggi, berat) VALUES (:no_rm, :tensi, :tinggi, :berat)');
+            $params = [
+                ":no_rm" => $no_rm,
+                ":tensi" => $tensi,
+                ":tinggi" => $tinggi,
+                ":berat" => $berat
+            ];
+    
+            if ($stmt_rekam_medis->execute($params)) {
+                $response->getBody()->write(json_encode(['status' => 'berhasil']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            } else {
+                $response->getBody()->write(json_encode(['status' => 'failed']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            }
+        } else {
+            // Jika no_rm tidak ditemukan di tabel pasien
+            $response->getBody()->write(json_encode(['status' => 'failed', 'message' => 'Pasien tidak ditemukan']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+        }
+    });
+
+    $app->get('/rekam_medis/latest', function (Request $request, Response $response) use ($pdo) {
+        $stmt = $pdo->query('SELECT id_rm FROM rekam_medis ORDER BY id_rm DESC LIMIT 1');
+        $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if ($latestRecord) {
+            $response->getBody()->write(json_encode($latestRecord));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } else {
+            $response->getBody()->write(json_encode(['error' => 'No records found']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+        }
+    });
+
+//END PASIEN
 };
