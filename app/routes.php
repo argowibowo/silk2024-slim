@@ -269,7 +269,7 @@ return function (App $app) {
     });
 
     // Get data by nama untuk menampilkan data 
-    $app->get("/pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+    $app->get("/pasien1/{nama}", function (Request $request, Response $response, $args) use ($pdo){
         $nama = $args['nama'];
 
         $stmt = $pdo->prepare('SELECT * FROM pasien WHERE nama = :nama');
@@ -288,7 +288,7 @@ return function (App $app) {
 
 
     // Update data
-    $app->put("/update_pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+    $app->put("/update_pasien1/{nama}", function (Request $request, Response $response, $args) use ($pdo){
         $sku = $args['nama'];
         $requestData = $request->getParsedBody();
 
@@ -323,7 +323,7 @@ return function (App $app) {
 
 
     // Delete data
-    $app->delete("/delete_pasien/{nama}", function (Request $request, Response $response, $args) use ($pdo){
+    $app->delete("/delete_pasien1/{nama}", function (Request $request, Response $response, $args) use ($pdo){
         $nama = $args['nama'];
 
         $stmt = $pdo->prepare('DELETE FROM pasien WHERE nama = :nama');
@@ -440,12 +440,12 @@ $app->group('/cari_pasien', function (Group $group) use ($pdo) {
   // API OBAT
   $app->group('/cari_obat', function (Group $group) use ($pdo) {
     // Mendapatkan data lengkap obat berdasarkan ID
-    $group->get('/{id}', function (Request $request, Response $response, array $args) use ($pdo) {
-        $id = $args['id'];
+    $group->get('/{sku}', function (Request $request, Response $response, array $args) use ($pdo) {
+        $sku = $args['sku'];
 
         // Prepare statement
-        $stmt = $pdo->prepare('SELECT * FROM farmasi WHERE id = :id');
-        $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare('SELECT * FROM farmasi WHERE sku = :sku');
+        $stmt->execute([':sku' => $sku]);
 
         // Fetch data
         $obat = $stmt->fetch(PDO::FETCH_ASSOC);
